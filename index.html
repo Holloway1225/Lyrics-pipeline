@@ -36,7 +36,7 @@
     color:var(--text);
   }
   header h1 span{color:var(--accent);}
-  header p{margin:4px 0 0; color:var(--text-dim); font-size:12.5px; max-width:520px;}
+  header p{margin:4px 0 0; color:var(--text-dim); font-size:12.5px; max-width:560px;}
   .grid{display:grid; grid-template-columns:340px 1fr; gap:20px;}
   @media (max-width:880px){ .grid{grid-template-columns:1fr;} }
   .panel{background:var(--bg-panel); border:1px solid var(--border); border-radius:6px; padding:18px;}
@@ -85,15 +85,21 @@
   .gradehead .total{font-family:var(--disp); font-size:38px; font-weight:600; color:var(--accent);}
   .gradehead .band{font-size:13px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;}
   table.scores{width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:14px;}
-  table.scores td, table.scores th{border-bottom:1px solid var(--border); padding:7px 6px; text-align:left;}
+  table.scores td, table.scores th{border-bottom:1px solid var(--border); padding:7px 6px; text-align:left; vertical-align:top;}
   table.scores th{color:var(--text-dim); font-weight:500;}
-  table.scores td.num{text-align:right; font-family:var(--mono); color:var(--accent);}
+  table.scores td.num{text-align:right; font-family:var(--mono); color:var(--accent); white-space:nowrap;}
+  table.scores td.evidence{font-size:11.5px; color:var(--text-dim); font-style:italic;}
   .notes{font-size:12.5px; color:var(--text-dim);}
   .notes p{margin:6px 0;}
-  .flagbar{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;}
+  .sectionhead{font-family:var(--disp);font-size:14px;margin:22px 0 8px;color:var(--text-dim);}
+  .flagbar{display:flex; flex-direction:column; gap:5px; margin-bottom:14px;}
+  .flagrow{display:flex; flex-wrap:wrap; gap:6px;}
+  .flagrow-label{font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:2px;}
   .flag{font-size:11px; background:rgba(194,91,91,0.12); border:1px solid var(--bad); color:var(--bad); padding:2px 8px; border-radius:3px;}
   .flag.ok{background:rgba(111,191,122,0.1); border-color:var(--good); color:var(--good);}
+  .flag.hard{background:rgba(194,91,91,0.18); border-color:var(--bad); color:#f0a8a8; font-weight:600;}
   .sunobox{white-space:pre-wrap; background:var(--bg-panel-2); border:1px solid var(--border); border-radius:5px; padding:16px; font-size:12.5px; color:var(--text);}
+  .sunobox .charcount{display:block; margin-top:10px; color:var(--text-dim); font-size:11px;}
   .footer-note{color:var(--text-dim); font-size:11.5px; margin-top:24px; border-top:1px solid var(--border); padding-top:14px;}
   .hint{font-size:11px; color:var(--text-dim); margin-top:4px;}
 </style>
@@ -104,7 +110,7 @@
   <header>
     <div>
       <h1>SPINE <span>FORGE</span></h1>
-      <p>Theme in. Runs the checklist — spine, image, hook, draft, grade — and hands you the result. One pass, no auto-rewrites.</p>
+      <p>Theme in. Builds the spine, image, hook, and draft, runs hard-rule checks (banned words, empty sections, stray duplicate lines), then grades against the rubric. One writing pass — the grade is deterministic where it can be, and the LLM only judges what actually requires literary judgment.</p>
     </div>
   </header>
 
@@ -115,12 +121,12 @@
       <div class="panel">
         <div class="tabs">
           <div class="tab active" data-mode="theme">From theme</div>
-          <div class="tab" data-mode="refine">Refine pasted lyrics</div>
+          <div class="tab" data-mode="refine">Grade pasted lyrics</div>
         </div>
 
         <div id="mode-theme">
           <label>Theme / prompt</label>
-          <textarea id="theme" class="theme" placeholder="Paste the theme paragraph here...">This song is about a person who wakes each morning from vivid dreams of being loved, only to find themselves completely alone — and the torment of that gap between the warmth they crave and the cold reality they inhabit. The deeper wound is an identity crisis: the speaker genuinely hungers to be known, to have someone recognize their name and feel their love, yet they define themselves as a born destroyer, a villain by nature. That contradiction is the engine of the song. Surrounding this is a portrait of a hollowed-out generation grinding through a system that offers praise without reward, motion without meaning. The speaker cannot reconcile the tenderness of those nightly dreams with the ruthless, game-face self they put on by day, and so the longing loops endlessly, replaying like a compulsion — wanted and weaponized at once.</textarea>
+          <textarea id="theme" class="theme" placeholder="Paste the theme paragraph here..."></textarea>
         </div>
 
         <div id="mode-refine" style="display:none;">
@@ -136,7 +142,7 @@
           <option value="custom">Custom / other</option>
         </select>
 
-        <label>Banned vocabulary <span class="hint" style="display:inline">(comma separated)</span></label>
+        <label>Banned vocabulary <span class="hint" style="display:inline">(comma separated — enforced in code, not just prompted)</span></label>
         <textarea id="banned" class="small"></textarea>
 
         <label>Avoid-pattern toggles</label>
@@ -160,7 +166,7 @@
         <label>Groq key (fallback)</label>
         <input type="password" id="key_groq" placeholder="gsk_...">
         <div class="btnrow"><button class="ghost" id="savekeys">Save keys to this browser</button></div>
-        <p class="hint">Stored in localStorage on this device only. Claude (claude-sonnet-4-6) runs first; if it fails, calls fall back to Groq (llama-3.3-70b-versatile).</p>
+        <p class="hint">Stored in localStorage on this device, calls go straight from your browser to Claude (claude-sonnet-4-6) first, then Groq (llama-3.3-versatile) if that fails. That's fine for a personal tool on your own device, but it's not secure for anything public — anyone with access to this browser's storage could read the keys. Don't reuse this file for a shared or public deployment without putting a backend between the browser and the API.</p>
       </div>
     </div>
 
@@ -189,18 +195,24 @@ const GLOBAL_DISLIKES = [
   "generic \"broken person\" language (\"I'm broken\", \"I'm shattered\", \"pieces of me\")",
   "stock 2AM / coffee / rain imagery",
   "over-explaining the meaning — stating the theme instead of dramatizing it",
-  "cramming too many ideas into one line",
+  "cramming too many ideas into one line — each line should generally perform one primary action, image, realization, or emotional movement",
   "predictable inspirational endings (\"I'll carry on\", \"I'm stronger now\")",
   "excessive screaming / gratuitous intensity with no dynamic contrast",
-  "generic AI-metal vocabulary (\"shadows\", \"demons\", \"chains\" used as empty signifiers, \"embrace the dark\")"
+  "generic AI-metal vocabulary (\"shadows\", \"demons\", \"chains\" used as empty signifiers, \"embrace the dark\")",
+  "metaphor drift — introducing an unrelated imagery system instead of developing the one governing image"
 ];
 
 const SUNO_BASE_CS15 = "Melodic Glitch Metal, Haunting Cinematic Alternative Metal, Intimate Male Vocals, Whispered Low-Register Verses, Hypnotic Vocal Delivery, Slow-Building Tension, Electronic Textures, Mechanical Pulse, Dark Ambient Layers, Atmospheric Guitars, Sub-Bass Pressure, Spacious Drums, Eerie Room-Tone Ambience, Distant Radio Interference, Subtle Signal Artifacts, Melancholy And Fascination Instead Of Rage, Chorus Opens Wider With Emotional Lift And Inevitability, Powerful But Restrained Hook, Cinematic Bridge With Rising Dread And Weightless Momentum, Massive Stereo Atmosphere, Immersive Production, Unsettling Beauty, Dark, Elegant, Hypnotic, Emotionally Consuming";
 const SUNO_BASE_CS6 = "Melodic Glitch Metal, Haunting Cinematic Alternative Metal, Intimate Male Vocals, Whispered Low-Register Verses, Hypnotic Vocal Delivery, Slow-Building Tension, Electronic Textures (non-signal), Dark Ambient Layers, Atmospheric Guitars, Sub-Bass Pressure, Spacious Drums, Eerie Room-Tone Ambience, Melancholy And Fascination Instead Of Rage, Chorus Opens Wider With Emotional Lift And Inevitability, Powerful But Restrained Hook, Cinematic Bridge With Rising Dread And Weightless Momentum, Massive Stereo Atmosphere, Immersive Production, Unsettling Beauty, Plain Human Voice, Physical Body Imagery, Dark, Elegant, Hypnotic, Emotionally Consuming";
 const SUNO_BASE_COUNTRY = "Dark Outlaw Country, Southern Gothic Alternative, Weathered Male Vocals, Sparse Acoustic Guitar, Slide Guitar Textures, Brushed Drums, Room-Tone Ambience, Restrained Until It Isn't, Storytelling Delivery, Slow Burn, Elegant, Haunted, Emotionally Consuming";
 
+// rubric weights — the app enforces these, not the LLM
+const RUBRIC_MAX = {spine:25, imagery:20, hook:20, originality:15, meter:15, cohesion:5};
+const RUBRIC_LABEL = {spine:'Narrative Spine', imagery:'Imagery', hook:'Hook / Chorus', originality:'Originality', meter:'Singability / Meter', cohesion:'Cohesion / Payoff'};
+
 // ---------------- state / storage ----------------
 const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function loadKeys(){
   $('key_anthropic').value = localStorage.getItem('key_anthropic') || '';
@@ -241,49 +253,77 @@ $('clear').onclick = () => {
   $('output').innerHTML = '<div class="empty">Nothing run yet. Fill in the theme, add your keys, and hit Run pipeline.</div>';
 };
 
-// ---------------- LLM calls ----------------
-async function callClaude(system, user){
+// ---------------- LLM calls (with timeout + retry on transient errors) ----------------
+async function callClaude(system, user, attempt){
+  attempt = attempt || 1;
   const key = localStorage.getItem('key_anthropic');
   if(!key) throw new Error('no anthropic key');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key': key,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:4000,
-      system: system,
-      messages:[{role:'user', content:user}]
-    })
-  });
-  if(!res.ok) throw new Error('claude http '+res.status);
-  const data = await res.json();
-  const text = (data.content||[]).map(b=>b.text||'').join('\n');
-  if(!text) throw new Error('claude empty response');
-  return text;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4000,
+        system: system,
+        messages:[{role:'user', content:user}]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if(!res.ok){
+      const transient = [429,500,502,503].includes(res.status);
+      if(transient && attempt < 2){
+        await sleep(900);
+        return callClaude(system, user, attempt+1);
+      }
+      throw new Error('claude http '+res.status);
+    }
+    const data = await res.json();
+    const text = (data.content||[]).map(b=>b.text||'').join('\n');
+    if(!text) throw new Error('claude empty response');
+    return text;
+  }catch(e){
+    clearTimeout(timeoutId);
+    if(e.name === 'AbortError') throw new Error('claude timeout');
+    throw e;
+  }
 }
 
 async function callGroq(system, user){
   const key = localStorage.getItem('key_groq');
   if(!key) throw new Error('no groq key');
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+key},
-    body: JSON.stringify({
-      model:'llama-3.3-70b-versatile',
-      max_tokens:4000,
-      messages:[{role:'system', content:system},{role:'user', content:user}]
-    })
-  });
-  if(!res.ok) throw new Error('groq http '+res.status);
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content;
-  if(!text) throw new Error('groq empty response');
-  return text;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  try{
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+key},
+      body: JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        max_tokens:4000,
+        messages:[{role:'system', content:system},{role:'user', content:user}]
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if(!res.ok) throw new Error('groq http '+res.status);
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content;
+    if(!text) throw new Error('groq empty response');
+    return text;
+  }catch(e){
+    clearTimeout(timeoutId);
+    if(e.name === 'AbortError') throw new Error('groq timeout');
+    throw e;
+  }
 }
 
 async function callLLM(system, user){
@@ -304,6 +344,113 @@ function parseJSON(text){
   return JSON.parse(t);
 }
 
+// ---------------- schema validation (throws with a descriptive message) ----------------
+function isNonEmptyString(v){ return typeof v === 'string' && v.trim().length > 0; }
+
+function validateSpine(o){
+  ['subject','conflict','change','oneThing'].forEach(k => { if(!isNonEmptyString(o[k])) throw new Error('spine missing "'+k+'"'); });
+}
+function validateImage(o){
+  if(!isNonEmptyString(o.image)) throw new Error('image missing "image"');
+  if(!isNonEmptyString(o.why)) throw new Error('image missing "why"');
+}
+function validateHook(o){
+  ['title','chorusCore','why'].forEach(k => { if(!isNonEmptyString(o[k])) throw new Error('hook missing "'+k+'"'); });
+}
+function validateDraft(o){
+  if(!isNonEmptyString(o.title)) throw new Error('draft missing title');
+  if(!Array.isArray(o.sections) || o.sections.length === 0) throw new Error('draft has no sections');
+  o.sections.forEach((s,i) => {
+    if(!isNonEmptyString(s.label)) throw new Error('section '+i+' missing label');
+    if(!Array.isArray(s.lines) || s.lines.length === 0) throw new Error('section "'+s.label+'" has no lines');
+    s.lines.forEach(l => { if(typeof l !== 'string') throw new Error('section "'+s.label+'" has a non-string line'); });
+  });
+}
+function validateGrade(o){
+  if(!o.categories || typeof o.categories !== 'object') throw new Error('grade missing categories');
+  Object.keys(RUBRIC_MAX).forEach(k => {
+    const c = o.categories[k];
+    if(!c) throw new Error('grade missing category "'+k+'"');
+    if(typeof c.score !== 'number') throw new Error('category "'+k+'" score is not a number');
+    if(!isNonEmptyString(c.notes)) throw new Error('category "'+k+'" missing notes');
+  });
+  if(!Array.isArray(o.flags)) o.flags = [];
+}
+function validateSunoAdj(o){
+  if(!isNonEmptyString(o.prompt)) throw new Error('suno response missing "prompt"');
+}
+
+async function callLLMValidated(sys, user, validate){
+  let raw = await callLLM(sys, user);
+  let obj;
+  try{
+    obj = parseJSON(raw);
+    validate(obj);
+  }catch(e){
+    raw = await callLLM(sys, user + '\n\nYour previous response did not conform to the required JSON schema ('+e.message+'). Return ONLY valid JSON matching the requested structure — no markdown fences, no commentary.');
+    obj = parseJSON(raw);
+    validate(obj);
+  }
+  return obj;
+}
+
+// ---------------- deterministic hard-rule checks (code, not the LLM) ----------------
+function validateBannedWords(draft, bannedTerms){
+  const violations = [];
+  const terms = bannedTerms.map(t => t.trim().toLowerCase()).filter(Boolean);
+  if(!terms.length) return violations;
+  (draft.sections||[]).forEach(section => {
+    (section.lines||[]).forEach(line => {
+      const lower = line.toLowerCase();
+      terms.forEach(term => {
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp('(^|[^a-z0-9])' + escaped + '($|[^a-z0-9])', 'i');
+        if(re.test(lower)) violations.push({term, line, section: section.label});
+      });
+    });
+  });
+  return violations;
+}
+
+function validateHardRules(draft){
+  const issues = [];
+  if(!isNonEmptyString(draft.title)) issues.push('Missing title / hook.');
+  if(!Array.isArray(draft.sections) || draft.sections.length === 0){ issues.push('No sections generated.'); return issues; }
+  const hasChorus = draft.sections.some(s => /chorus/i.test(s.label));
+  if(!hasChorus) issues.push('No chorus section found.');
+
+  const seen = {};
+  const chorusLines = new Set();
+  draft.sections.forEach(s => {
+    if(!Array.isArray(s.lines) || s.lines.length === 0){ issues.push('Empty section: '+s.label); return; }
+    const isChorus = /chorus/i.test(s.label);
+    s.lines.forEach(line => {
+      const key = (line||'').trim().toLowerCase();
+      if(!key) return;
+      if(isChorus){ chorusLines.add(key); return; }
+      seen[key] = (seen[key]||0) + 1;
+    });
+  });
+  Object.entries(seen).forEach(([line,count]) => {
+    if(count > 1 && !chorusLines.has(line)) issues.push('Repeated line outside the chorus ('+count+'x): "'+line+'"');
+  });
+  return issues;
+}
+
+function computeTotal(categories){
+  return Object.entries(RUBRIC_MAX).reduce((sum,[k,max]) => {
+    const raw = categories[k] ? Number(categories[k].score) : 0;
+    const clipped = Math.max(0, Math.min(isNaN(raw) ? 0 : raw, max));
+    return sum + clipped;
+  }, 0);
+}
+function computeBand(total){
+  if(total >= 90) return 'ready';
+  if(total >= 80) return 'strong';
+  if(total >= 70) return 'dragging';
+  return 'rework';
+}
+
 // ---------------- shared prompt context ----------------
 function buildConstraints(){
   const style = $('style').value;
@@ -322,7 +469,7 @@ function buildConstraints(){
 
   return {
     styleNote,
-    bannedLine: banned.length ? ('Never use these words/phrases: ' + banned.join(', ') + '.') : '',
+    bannedLine: banned.length ? ('Never use these words/phrases: ' + banned.join(', ') + '. (This is also enforced in code after you write — treat it as a hard rule, not a suggestion.)') : '',
     avoidLine: avoids.length ? ('Avoid these imagery patterns entirely: ' + avoids.join('; ') + '.') : '',
     dislikeLine: 'Also avoid, categorically: ' + GLOBAL_DISLIKES.join('; ') + '.'
   };
@@ -357,7 +504,7 @@ function setStage(id, status){
   el.classList.add(status);
 }
 
-// ---------------- pipeline ----------------
+// ---------------- pipeline: from theme ----------------
 async function runThemePipeline(theme){
   $('stagelog').innerHTML = '';
   $('output').innerHTML = '';
@@ -366,57 +513,70 @@ async function runThemePipeline(theme){
     ['image','2. Central image / governing metaphor'],
     ['hook','3. Hook — title and chorus candidates'],
     ['draft','4. Full draft — verses, pre-chorus, chorus, bridge, outro'],
-    ['grade','5. Grade against the rubric'],
-    ['suno','6. Suno sound prompt']
+    ['validate','5. Hard-rule validation — banned words, duplicates, structure'],
+    ['grade','6. Craft grade against the rubric'],
+    ['suno','7. Suno sound prompt from the final lyrics']
   ];
   stages.forEach(([id,label]) => stageRow(id,label));
 
   const sys = baseSystem();
-  let spine, image, hook, draft, grade;
+  let spine, image, hook, draft, grade, hardFlags = [];
 
   try{
-    // 1. SPINE
     setStage('spine','active');
-    spine = parseJSON(await callLLM(sys,
-      'Theme:\n'+theme+'\n\nGive me the spine as JSON: {"subject": "...", "conflict": "the emotional conflict in one sentence", "change": "what shifts from beginning to end", "oneThing": "the single thing the listener should remember"}'
-    ));
+    spine = await callLLMValidated(sys,
+      'Theme:\n'+theme+'\n\nGive me the spine as JSON: {"subject": "...", "conflict": "the emotional conflict in one sentence", "change": "what shifts from beginning to end", "oneThing": "the single thing the listener should remember"}',
+      validateSpine
+    );
     setStage('spine','done');
 
-    // 2. IMAGE
     setStage('image','active');
-    image = parseJSON(await callLLM(sys,
-      'Spine:\n'+JSON.stringify(spine)+'\n\nGive me ONE concrete, specific central image or metaphor that can carry this entire song — something visual and physical, not a generic feeling-word. Respond as JSON: {"image": "the image, described concretely", "why": "one sentence on why this image dramatizes the conflict instead of stating it"}'
-    ));
+    image = await callLLMValidated(sys,
+      'Spine:\n'+JSON.stringify(spine)+'\n\nGive me ONE concrete, specific central image or metaphor that can carry this entire song — something visual and physical, not a generic feeling-word. Respond as JSON: {"image": "the image, described concretely", "why": "one sentence on why this image dramatizes the conflict instead of stating it"}',
+      validateImage
+    );
     setStage('image','done');
 
-    // 3. HOOK
     setStage('hook','active');
-    hook = parseJSON(await callLLM(sys,
+    hook = await callLLMValidated(sys,
       'Spine:\n'+JSON.stringify(spine)+'\nCentral image:\n'+JSON.stringify(image)+
-      '\n\nGive me the hook. It needs to contain the identity of the song — a memorable title phrase, a singable central line, an emotional turn, something that sticks. Respond as JSON: {"title": "...", "chorusCore": "the 1-2 line hook itself", "why": "why this sticks"}'
-    ));
+      '\n\nGive me the hook. It needs to contain the identity of the song — a memorable title phrase, a singable central line, an emotional turn, something that sticks. Respond as JSON: {"title": "...", "chorusCore": "the 1-2 line hook itself", "why": "why this sticks"}',
+      validateHook
+    );
     setStage('hook','done');
 
-    // 4. DRAFT
     setStage('draft','active');
-    draft = parseJSON(await callLLM(sys,
+    draft = await callLLMValidated(sys,
       'Spine:\n'+JSON.stringify(spine)+'\nCentral image:\n'+JSON.stringify(image)+'\nHook:\n'+JSON.stringify(hook)+
-      '\n\nWrite the full song. Verse 1 establishes the situation through the central image. Verse 2 develops or complicates it — it must reveal something new, not restate verse 1. Pre-chorus builds pressure. Chorus delivers the emotional thesis and contains the hook. Bridge reveals or changes something the listener did not already know — no generic "I\'m stronger now" filler. Outro is intentional, not just a fade. Watch syllable count and natural emphasis — these need to be singable, not just readable. Use a mix of perfect rhyme, slant rhyme, internal rhyme, and consonance — not uniform nursery-rhyme rhyming. Include bracketed production notes for pauses, repeated phrases, backing vocals, instrumental sections where the song needs them. Every section label must be formatted exactly as Suno reads it: the section name followed by a short style/vocal direction, e.g. "Verse 1 — intimate, restrained vocals" or "Bridge — quiet, almost spoken, stripped-back production". Put the direction in the label itself, never as a separate parenthetical note. Respond as JSON: {"title": "...", "sections": [{"label": "Verse 1 — intimate, restrained vocals", "lines": ["...", "..."]}, {"label": "Pre-Chorus — tension building", "lines": [...]}, {"label": "Chorus — full voice, wide open", "lines": [...]}, {"label": "Verse 2 — ...", "lines": [...]}, {"label": "Pre-Chorus — ...", "lines": [...]}, {"label": "Chorus — ...", "lines": [...]}, {"label": "Bridge — ...", "lines": [...]}, {"label": "Outro — ...", "lines": [...]}]}'
-    ));
+      '\n\nWrite the full song. Verse 1 establishes the situation through the central image. Verse 2 develops or complicates it — it must reveal something new, not restate verse 1. Pre-chorus builds pressure. Chorus delivers the emotional thesis and contains the hook. Bridge reveals or changes something the listener did not already know — no generic "I\'m stronger now" filler. Outro is intentional, not just a fade. Watch syllable count and natural emphasis — these need to be singable, not just readable. Use a mix of perfect rhyme, slant rhyme, internal rhyme, and consonance — not uniform nursery-rhyme rhyming. The song must develop ONE governing image throughout — verse 2 should deepen it, the bridge should transform it, the chorus should use it meaningfully. Do not introduce an unrelated second metaphor system partway through. Each line should generally do one job — one image, one action, one realization — not several stacked together. Include bracketed production notes for pauses, repeated phrases, backing vocals, instrumental sections where the song needs them. Every section label must be formatted exactly as Suno reads it: the section name followed by a short style/vocal direction, e.g. "Verse 1 — intimate, restrained vocals" or "Bridge — quiet, almost spoken, stripped-back production". Put the direction in the label itself, never as a separate parenthetical note. Respond as JSON: {"title": "...", "sections": [{"label": "Verse 1 — intimate, restrained vocals", "lines": ["...", "..."]}, {"label": "Pre-Chorus — tension building", "lines": [...]}, {"label": "Chorus — full voice, wide open", "lines": [...]}, {"label": "Verse 2 — ...", "lines": [...]}, {"label": "Pre-Chorus — ...", "lines": [...]}, {"label": "Chorus — ...", "lines": [...]}, {"label": "Bridge — ...", "lines": [...]}, {"label": "Outro — ...", "lines": [...]}]}',
+      validateDraft
+    );
     setStage('draft','done');
     renderDraftPreview(draft);
 
-    // 5. GRADE
+    setStage('validate','active');
+    const bannedList = $('banned').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const bannedViolations = validateBannedWords(draft, bannedList);
+    const structureIssues = validateHardRules(draft);
+    hardFlags = bannedViolations.map(v => 'banned word "'+v.term+'" in ['+v.section+']: "'+v.line+'"').concat(structureIssues);
+    setStage('validate','done');
+
     setStage('grade','active');
-    grade = await gradeDraft(sys, draft);
+    const rawGrade = await callLLMValidated(sys,
+      'Grade this song against the rubric (whole-number scores, do not inflate): Narrative Spine '+RUBRIC_MAX.spine+', Imagery '+RUBRIC_MAX.imagery+', Hook/Chorus '+RUBRIC_MAX.hook+', Originality '+RUBRIC_MAX.originality+', Singability/Meter '+RUBRIC_MAX.meter+', Cohesion/Payoff '+RUBRIC_MAX.cohesion+'. Be a genuinely tough grader. Do not reward the song for merely containing the requested elements (a bridge, a central image, a hook) — judge whether those elements actually work. Never invent strengths to justify a high score; be willing to give low scores. For every score below the maximum, cite the specific line or section that cost points — do not give a deduction without evidence. For Singability/Meter specifically check for: overlong lines, awkward stresses, excessive syllable density, lines requiring unnatural pronunciation, inconsistent verse rhythm, and choruses that are harder to sing than the verses — intentional variation is fine, uniformity is not required. For Imagery and Cohesion specifically check whether the song develops ONE governing image consistently, or drifts into an unrelated metaphor system partway through. Flag any line that stacks more than one distinct idea/image/action into itself.\n\nSong:\n'+JSON.stringify(draft)+
+      '\n\nRespond as JSON: {"categories": {"spine": {"score": N, "evidence": ["specific line or section"], "notes": "..."}, "imagery": {"score": N, "evidence": [...], "notes": "..."}, "hook": {"score": N, "evidence": [...], "notes": "..."}, "originality": {"score": N, "evidence": [...], "notes": "..."}, "meter": {"score": N, "evidence": [...], "notes": "..."}, "cohesion": {"score": N, "evidence": [...], "notes": "..."}}, "flags": ["any cliché, stacked-idea line, or metaphor drift found"], "closingNote": "one sentence on what stands between this and a perfect score, or empty string if none"}',
+      validateGrade
+    );
+    const total = computeTotal(rawGrade.categories);
+    const band = computeBand(total);
+    grade = {categories: rawGrade.categories, flags: rawGrade.flags||[], closingNote: rawGrade.closingNote||'', total, band};
     setStage('grade','done');
 
-    // 6. SUNO
     setStage('suno','active');
-    const sunoPrompt = await buildSunoPrompt(sys, spine, image, hook);
+    const sunoPrompt = await buildSunoPrompt(sys, spine, image, hook, draft);
     setStage('suno','done');
 
-    renderFinal(draft, grade, sunoPrompt);
+    renderFinal(draft, grade, sunoPrompt, hardFlags);
 
   }catch(err){
     stages.forEach(([id]) => { if(!$('stage-'+id).classList.contains('done')) setStage(id,'err'); });
@@ -424,23 +584,72 @@ async function runThemePipeline(theme){
   }
 }
 
-async function gradeDraft(sys, draft){
-  const raw = await callLLM(sys,
-    'Grade this song against the rubric (100 points total, whole numbers): Narrative Spine 25, Imagery 20, Hook/Chorus 20, Originality 15, Singability/Meter 10, Cohesion/Payoff 10. Be a genuinely tough grader — do not inflate scores. Flag any cliché, any banned word if one slipped through, any place the song explains its meaning instead of dramatizing it.\n\nSong:\n'+JSON.stringify(draft)+
-    '\n\nRespond as JSON: {"categories": {"spine": {"score": N, "max": 25, "notes": "..."}, "imagery": {"score": N, "max": 20, "notes": "..."}, "hook": {"score": N, "max": 20, "notes": "..."}, "originality": {"score": N, "max": 15, "notes": "..."}, "meter": {"score": N, "max": 10, "notes": "..."}, "cohesion": {"score": N, "max": 10, "notes": "..."}}, "total": N, "band": "ready|strong|dragging|rework", "flags": ["any cliché or banned word found, if any"], "wouldWantToHearAgain": true, "closingNote": "one sentence on what stands between this and a perfect score, or empty string if none"}'
-  );
-  return parseJSON(raw);
-}
-
-async function buildSunoPrompt(sys, spine, image, hook){
+async function buildSunoPrompt(sys, spine, image, hook, draft){
   const style = $('style').value;
   const base = style==='cs6' ? SUNO_BASE_CS6 : style==='country' ? SUNO_BASE_COUNTRY : SUNO_BASE_CS15;
-  const adj = parseJSON(await callLLM(sys,
+  let adj = await callLLMValidated(sys,
     'Spine:\n'+JSON.stringify(spine)+'\nCentral image:\n'+JSON.stringify(image)+'\nHook:\n'+JSON.stringify(hook)+
+    '\nFinal lyrics — base the prompt on what the song actually became, not just the plan:\n'+JSON.stringify(draft)+
     '\n\nBase sound tags for this project:\n'+base+
-    '\n\nAdjust and tighten these tags to fit this specific song\'s emotional spine — keep the ones that still apply, cut ones that don\'t fit, add 2-4 song-specific tags if needed. Respond as JSON: {"prompt": "final comma-separated tag string"}'
-  ));
-  return adj.prompt;
+    '\n\nExamine the final lyrics and determine vocal intensity, verse delivery, chorus size, emotional progression, bridge behavior, outro behavior, instrumental density, and whether the song needs restraint or aggression. Adjust and tighten the base tags to match — keep what still applies, cut what doesn\'t, add up to 4 song-specific tags. Keep the final prompt under 1000 characters. Respond as JSON: {"prompt": "final comma-separated tag string"}',
+    validateSunoAdj
+  );
+  let prompt = adj.prompt;
+  let compressAttempts = 0;
+  while(prompt.length > 1000 && compressAttempts < 2){
+    compressAttempts++;
+    const compressed = await callLLMValidated(sys,
+      'Reduce this Suno prompt to 950 characters or fewer. Preserve the most important genre, vocal, instrumentation, dynamics, emotional, and production information — remove redundancy, do not just truncate mid-tag.\n\nPrompt:\n'+prompt,
+      validateSunoAdj
+    );
+    prompt = compressed.prompt;
+  }
+  return prompt;
+}
+
+// ---------------- pipeline: grade pasted lyrics ----------------
+async function runRefinePipeline(pasted){
+  $('stagelog').innerHTML = '';
+  $('output').innerHTML = '';
+  const stages = [
+    ['validate','1. Hard-rule validation — banned words, duplicates, structure'],
+    ['grade','2. Craft grade against the rubric'],
+    ['suno','3. Suno sound prompt from these lyrics']
+  ];
+  stages.forEach(([id,label]) => stageRow(id,label));
+  const sys = baseSystem();
+
+  try{
+    const draft = {title:'Pasted lyrics', sections:[{label:'Full lyrics', lines: pasted.split('\n').filter(l=>l.trim())}]};
+
+    setStage('validate','active');
+    const bannedList = $('banned').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const bannedViolations = validateBannedWords(draft, bannedList);
+    const structureIssues = validateHardRules(draft);
+    const hardFlags = bannedViolations.map(v => 'banned word "'+v.term+'": "'+v.line+'"').concat(structureIssues);
+    setStage('validate','done');
+
+    setStage('grade','active');
+    const rawGrade = await callLLMValidated(sys,
+      'Grade this song against the rubric (whole-number scores, do not inflate): Narrative Spine '+RUBRIC_MAX.spine+', Imagery '+RUBRIC_MAX.imagery+', Hook/Chorus '+RUBRIC_MAX.hook+', Originality '+RUBRIC_MAX.originality+', Singability/Meter '+RUBRIC_MAX.meter+', Cohesion/Payoff '+RUBRIC_MAX.cohesion+'. Be a genuinely tough grader — do not invent strengths to justify a high score, and cite the specific line or section behind every deduction.\n\nSong:\n'+JSON.stringify(draft)+
+      '\n\nRespond as JSON: {"categories": {"spine": {"score": N, "evidence": [...], "notes": "..."}, "imagery": {"score": N, "evidence": [...], "notes": "..."}, "hook": {"score": N, "evidence": [...], "notes": "..."}, "originality": {"score": N, "evidence": [...], "notes": "..."}, "meter": {"score": N, "evidence": [...], "notes": "..."}, "cohesion": {"score": N, "evidence": [...], "notes": "..."}}, "flags": [...], "closingNote": "..."}',
+      validateGrade
+    );
+    const total = computeTotal(rawGrade.categories);
+    const band = computeBand(total);
+    const grade = {categories: rawGrade.categories, flags: rawGrade.flags||[], closingNote: rawGrade.closingNote||'', total, band};
+    setStage('grade','done');
+
+    setStage('suno','active');
+    const spine = {subject:'graded from pasted lyrics'};
+    const sunoPrompt = await buildSunoPrompt(sys, spine, {}, {}, draft);
+    setStage('suno','done');
+
+    renderFinal(draft, grade, sunoPrompt, hardFlags);
+  }catch(err){
+    stages.forEach(([id]) => { if(!$('stage-'+id).classList.contains('done')) setStage(id,'err'); });
+    $('output').innerHTML = '<div class="empty" style="color:var(--bad); border-color:var(--bad);">Pipeline stopped: '+escapeHtml(err.message)+'</div>';
+  }
 }
 
 // ---------------- rendering ----------------
@@ -448,46 +657,53 @@ function renderDraftPreview(draft){
   const container = document.getElementById('draftpreview') || document.createElement('div');
   container.id = 'draftpreview';
   const text = draft.sections.map(s => '['+s.label+']\n'+s.lines.join('\n')).join('\n\n');
-  container.innerHTML = '<h2 style="font-family:var(--disp);font-size:14px;margin:18px 0 8px;color:var(--text-dim);">Draft in progress — '+escapeHtml(draft.title||'')+'</h2><div class="lyrics">'+escapeHtml(text)+'</div>';
+  container.innerHTML = '<h2 class="sectionhead">Draft — '+escapeHtml(draft.title||'')+'</h2><div class="lyrics">'+escapeHtml(text)+'</div>';
   if(!container.parentNode) $('output').appendChild(container);
 }
 
-function renderFinal(draft, grade, sunoPrompt){
+function renderFinal(draft, grade, sunoPrompt, hardFlags){
   window.__lastDraft = draft;
   window.__lastGrade = grade;
   window.__lastSuno = sunoPrompt;
+  window.__lastHardFlags = hardFlags || [];
 
   const text = draft.sections.map(s => '['+s.label+']\n'+s.lines.join('\n')).join('\n\n');
   const cats = grade.categories;
-  const rows = Object.entries(cats).map(([k,v]) => {
-    const label = {spine:'Narrative Spine', imagery:'Imagery', hook:'Hook / Chorus', originality:'Originality', meter:'Singability / Meter', cohesion:'Cohesion / Payoff'}[k] || k;
-    return '<tr><td>'+label+'</td><td class="num">'+v.score+' / '+v.max+'</td></tr>';
+  const rows = Object.keys(RUBRIC_MAX).map(k => {
+    const v = cats[k];
+    const evidence = (v.evidence||[]).length ? escapeHtml(v.evidence.join(' · ')) : '';
+    return '<tr><td>'+RUBRIC_LABEL[k]+'</td><td class="num">'+Math.max(0,Math.min(Number(v.score)||0, RUBRIC_MAX[k]))+' / '+RUBRIC_MAX[k]+'</td></tr>'
+      + (evidence ? '<tr><td colspan="2" class="evidence">'+evidence+'</td></tr>' : '');
   }).join('');
-  const notes = Object.entries(cats).map(([k,v]) => {
-    const label = {spine:'Narrative Spine', imagery:'Imagery', hook:'Hook / Chorus', originality:'Originality', meter:'Singability / Meter', cohesion:'Cohesion / Payoff'}[k] || k;
-    return '<p><strong style="color:var(--text);">'+label+':</strong> '+escapeHtml(v.notes)+'</p>';
+  const notes = Object.keys(RUBRIC_MAX).map(k => {
+    const v = cats[k];
+    return '<p><strong style="color:var(--text);">'+RUBRIC_LABEL[k]+':</strong> '+escapeHtml(v.notes)+'</p>';
   }).join('');
-  const flags = (grade.flags||[]).filter(f=>f && f.trim());
-  const flagbar = flags.length
-    ? flags.map(f=>'<span class="flag">'+escapeHtml(f)+'</span>').join('')
-    : '<span class="flag ok">no clichés / banned words flagged</span>';
+
+  const llmFlags = (grade.flags||[]).filter(f=>f && f.trim());
+  const hard = (hardFlags||[]).filter(f=>f && f.trim());
+  let flagbar = '<div class="flagbar">';
+  if(hard.length){
+    flagbar += '<div><div class="flagrow-label">Hard-rule violations (code-checked)</div><div class="flagrow">'+hard.map(f=>'<span class="flag hard">'+escapeHtml(f)+'</span>').join('')+'</div></div>';
+  }
+  flagbar += '<div><div class="flagrow-label">Grader flags</div><div class="flagrow">'+(llmFlags.length ? llmFlags.map(f=>'<span class="flag">'+escapeHtml(f)+'</span>').join('') : '<span class="flag ok">none</span>')+'</div></div>';
+  flagbar += '</div>';
 
   $('output').innerHTML = `
-    <div class="empty" style="display:none;"></div>
     <h2 style="font-family:var(--disp);font-size:16px;margin:4px 0 14px;">${escapeHtml(draft.title||'Untitled')}</h2>
     <div class="gradehead">
       <div class="total">${grade.total}</div>
-      <div class="band">${escapeHtml(grade.band)} / 100</div>
+      <div class="band">${escapeHtml(grade.band)} / 100 · score computed in code from category scores</div>
     </div>
-    <div class="flagbar">${flagbar}</div>
+    ${flagbar}
     <table class="scores"><thead><tr><th>Category</th><th style="text-align:right;">Score</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="notes">${notes}${grade.closingNote ? '<p style="margin-top:10px;"><strong style="color:var(--text);">What stands between this and perfect:</strong> '+escapeHtml(grade.closingNote)+'</p>' : ''}</div>
 
-    <h2 style="font-family:var(--disp);font-size:14px;margin:22px 0 8px;color:var(--text-dim);">Final lyrics</h2>
+    <h2 class="sectionhead">Final lyrics</h2>
     <div class="lyrics" id="finallyrics">${escapeHtml(text)}</div>
 
-    <h2 style="font-family:var(--disp);font-size:14px;margin:22px 0 8px;color:var(--text-dim);">Suno sound prompt</h2>
-    <div class="sunobox">${escapeHtml(sunoPrompt)}</div>
+    <h2 class="sectionhead">Suno sound prompt</h2>
+    <div class="sunobox">${escapeHtml(sunoPrompt)}<span class="charcount">${sunoPrompt.length} characters</span></div>
 
     <div class="btnrow">
       <button class="primary" id="downloadmd">Download as Markdown</button>
@@ -496,21 +712,28 @@ function renderFinal(draft, grade, sunoPrompt){
     </div>
   `;
 
-  $('downloadmd').onclick = () => downloadMarkdown(draft, grade, sunoPrompt);
+  $('downloadmd').onclick = () => downloadMarkdown(draft, grade, sunoPrompt, hardFlags);
   $('copylyrics').onclick = () => navigator.clipboard.writeText(text);
   $('copysuno').onclick = () => navigator.clipboard.writeText(sunoPrompt);
 }
 
-function downloadMarkdown(draft, grade, sunoPrompt){
+function downloadMarkdown(draft, grade, sunoPrompt, hardFlags){
   const cats = grade.categories;
-  const label = {spine:'Narrative Spine', imagery:'Imagery', hook:'Hook / Chorus', originality:'Originality', meter:'Singability / Meter', cohesion:'Cohesion / Payoff'};
   let md = '# '+(draft.title||'Untitled')+'\n\n';
-  md += '**'+grade.total+' / 100 — '+grade.band+'**\n\n';
+  md += '**'+grade.total+' / 100 — '+grade.band+'** (score computed from category scores, not taken from the model)\n\n';
   md += '| Category | Score |\n|---|---|\n';
-  Object.entries(cats).forEach(([k,v]) => { md += '| '+(label[k]||k)+' | '+v.score+' / '+v.max+' |\n'; });
+  Object.keys(RUBRIC_MAX).forEach(k => { md += '| '+RUBRIC_LABEL[k]+' | '+Math.max(0,Math.min(Number(cats[k].score)||0,RUBRIC_MAX[k]))+' / '+RUBRIC_MAX[k]+' |\n'; });
   md += '\n';
-  Object.entries(cats).forEach(([k,v]) => { md += '**'+(label[k]||k)+':** '+v.notes+'\n\n'; });
+  Object.keys(RUBRIC_MAX).forEach(k => {
+    const v = cats[k];
+    md += '**'+RUBRIC_LABEL[k]+':** '+v.notes+(v.evidence&&v.evidence.length ? ' _(evidence: '+v.evidence.join(' · ')+')_' : '')+'\n\n';
+  });
   if(grade.closingNote) md += '**What stands between this and perfect:** '+grade.closingNote+'\n\n';
+  if(hardFlags && hardFlags.length){
+    md += '**Hard-rule violations (code-checked):**\n';
+    hardFlags.forEach(f => { md += '- '+f+'\n'; });
+    md += '\n';
+  }
   md += '---\n\n## Lyrics\n\n';
   draft.sections.forEach(s => { md += '['+s.label+']\n'+s.lines.join('\n')+'\n\n'; });
   md += '---\n\n## Suno sound prompt\n\n'+sunoPrompt+'\n';
@@ -520,31 +743,6 @@ function downloadMarkdown(draft, grade, sunoPrompt){
   a.href = URL.createObjectURL(blob);
   a.download = (draft.title||'song').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.md';
   a.click();
-}
-
-async function runRefinePipeline(pasted){
-  $('stagelog').innerHTML = '';
-  $('output').innerHTML = '';
-  const stages = [['grade','1. Grade pasted lyrics'],['suno','2. Suno sound prompt']];
-  stages.forEach(([id,label]) => stageRow(id,label));
-  const sys = baseSystem();
-
-  try{
-    let draft = {title:'Refined song', sections:[{label:'Full lyrics', lines: pasted.split('\n')}]};
-    setStage('grade','active');
-    let grade = await gradeDraft(sys, draft);
-    setStage('grade','done');
-
-    setStage('suno','active');
-    const spine = {subject:'refined from pasted lyrics'};
-    const sunoPrompt = await buildSunoPrompt(sys, spine, {}, {});
-    setStage('suno','done');
-
-    renderFinal(draft, grade, sunoPrompt);
-  }catch(err){
-    stages.forEach(([id]) => { if(!$('stage-'+id).classList.contains('done')) setStage(id,'err'); });
-    $('output').innerHTML = '<div class="empty" style="color:var(--bad); border-color:var(--bad);">Pipeline stopped: '+escapeHtml(err.message)+'</div>';
-  }
 }
 
 function escapeHtml(s){
