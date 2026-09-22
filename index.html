@@ -96,7 +96,6 @@
   .sunobox{white-space:pre-wrap; background:var(--bg-panel-2); border:1px solid var(--border); border-radius:5px; padding:16px; font-size:12.5px; color:var(--text);}
   .footer-note{color:var(--text-dim); font-size:11.5px; margin-top:24px; border-top:1px solid var(--border); padding-top:14px;}
   .hint{font-size:11px; color:var(--text-dim); margin-top:4px;}
-  .iterbadge{font-size:11px; color:var(--warn); margin-left:6px;}
 </style>
 </head>
 <body>
@@ -105,7 +104,7 @@
   <header>
     <div>
       <h1>SPINE <span>FORGE</span></h1>
-      <p>Theme in. Runs the checklist — spine, image, hook, draft, grade, revise — until it clears the bar, or you run out of iterations.</p>
+      <p>Theme in. Runs the checklist — spine, image, hook, draft, grade — and hands you the result. One pass, no auto-rewrites.</p>
     </div>
   </header>
 
@@ -136,13 +135,6 @@
           <option value="country">Outlaw Country / Dark Southern Rock</option>
           <option value="custom">Custom / other</option>
         </select>
-
-        <label>Target score <span class="hint" style="display:inline">(rubric out of 100)</span></label>
-        <div class="row">
-          <div><input type="text" id="target" value="95"></div>
-          <div><input type="text" id="maxiter" value="3" title="max revision passes"></div>
-        </div>
-        <div class="hint">target score — max revision passes</div>
 
         <label>Banned vocabulary <span class="hint" style="display:inline">(comma separated)</span></label>
         <textarea id="banned" class="small"></textarea>
@@ -375,15 +367,12 @@ async function runThemePipeline(theme){
     ['hook','3. Hook — title and chorus candidates'],
     ['draft','4. Full draft — verses, pre-chorus, chorus, bridge, outro'],
     ['grade','5. Grade against the rubric'],
-    ['revise','6. Revision pass(es) if under target'],
-    ['suno','7. Suno sound prompt']
+    ['suno','6. Suno sound prompt']
   ];
   stages.forEach(([id,label]) => stageRow(id,label));
 
   const sys = baseSystem();
   let spine, image, hook, draft, grade;
-  const targetScore = parseFloat($('target').value) || 95;
-  const maxIter = parseInt($('maxiter').value) || 3;
 
   try{
     // 1. SPINE
@@ -417,51 +406,22 @@ async function runThemePipeline(theme){
     setStage('draft','done');
     renderDraftPreview(draft);
 
-    // 5. GRADE (with revision loop)
-    let iter = 0;
-    grade = await gradeAndMaybeRevise(sys, theme, spine, image, hook, draft, targetScore, maxIter, (newDraft, i)=>{ draft = newDraft; iter = i; renderDraftPreview(draft); });
+    // 5. GRADE
+    setStage('grade','active');
+    grade = await gradeDraft(sys, draft);
+    setStage('grade','done');
 
-    // 7. SUNO
+    // 6. SUNO
     setStage('suno','active');
     const sunoPrompt = await buildSunoPrompt(sys, spine, image, hook);
     setStage('suno','done');
 
-    renderFinal(draft, grade, sunoPrompt, targetScore, iter);
+    renderFinal(draft, grade, sunoPrompt);
 
   }catch(err){
     stages.forEach(([id]) => { if(!$('stage-'+id).classList.contains('done')) setStage(id,'err'); });
     $('output').innerHTML = '<div class="empty" style="color:var(--bad); border-color:var(--bad);">Pipeline stopped: '+escapeHtml(err.message)+'<br><br>Check your API keys, or try again.</div>';
   }
-}
-
-async function gradeAndMaybeRevise(sys, theme, spine, image, hook, draft, targetScore, maxIter, onRevise){
-  setStage('grade','active');
-  let grade = await gradeDraft(sys, draft);
-  setStage('grade','done');
-
-  let iter = 0;
-  if(grade.total < targetScore && maxIter > 0){
-    setStage('revise','active');
-  }
-  while(grade.total < targetScore && iter < maxIter){
-    iter++;
-    const weakest = Object.entries(grade.categories).sort((a,b)=>{
-      const pctA = a[1].score / a[1].max, pctB = b[1].score / b[1].max;
-      return pctA - pctB;
-    }).slice(0,3).map(([k,v])=>k+': '+v.notes).join('\n');
-
-    const revised = parseJSON(await callLLM(sys,
-      'Theme:\n'+theme+'\nSpine:\n'+JSON.stringify(spine)+'\nCentral image:\n'+JSON.stringify(image)+'\nHook:\n'+JSON.stringify(hook)+
-      '\n\nCurrent draft:\n'+JSON.stringify(draft)+
-      '\n\nGrade notes — weakest categories to fix:\n'+weakest+
-      '\n\nRewrite the full song addressing these specific weaknesses. Do not lose what is already working elsewhere. Keep the same JSON shape: {"title": "...", "sections": [{"label": "...", "lines": [...]}, ...]}'
-    ));
-    draft = revised;
-    onRevise(draft, iter);
-    grade = await gradeDraft(sys, draft);
-  }
-  setStage('revise','done');
-  return grade;
 }
 
 async function gradeDraft(sys, draft){
@@ -492,7 +452,7 @@ function renderDraftPreview(draft){
   if(!container.parentNode) $('output').appendChild(container);
 }
 
-function renderFinal(draft, grade, sunoPrompt, targetScore, iterCount){
+function renderFinal(draft, grade, sunoPrompt){
   window.__lastDraft = draft;
   window.__lastGrade = grade;
   window.__lastSuno = sunoPrompt;
@@ -512,14 +472,12 @@ function renderFinal(draft, grade, sunoPrompt, targetScore, iterCount){
     ? flags.map(f=>'<span class="flag">'+escapeHtml(f)+'</span>').join('')
     : '<span class="flag ok">no clichés / banned words flagged</span>';
 
-  const iterBadge = iterCount > 0 ? ' <span class="iterbadge">('+iterCount+' revision pass'+(iterCount>1?'es':'')+')</span>' : '';
-
   $('output').innerHTML = `
     <div class="empty" style="display:none;"></div>
     <h2 style="font-family:var(--disp);font-size:16px;margin:4px 0 14px;">${escapeHtml(draft.title||'Untitled')}</h2>
     <div class="gradehead">
       <div class="total">${grade.total}</div>
-      <div class="band">${escapeHtml(grade.band)} / 100${iterBadge}</div>
+      <div class="band">${escapeHtml(grade.band)} / 100</div>
     </div>
     <div class="flagbar">${flagbar}</div>
     <table class="scores"><thead><tr><th>Category</th><th style="text-align:right;">Score</th></tr></thead><tbody>${rows}</tbody></table>
@@ -567,11 +525,9 @@ function downloadMarkdown(draft, grade, sunoPrompt){
 async function runRefinePipeline(pasted){
   $('stagelog').innerHTML = '';
   $('output').innerHTML = '';
-  const stages = [['grade','1. Grade current draft'],['revise','2. Revision pass'],['suno','3. Suno sound prompt']];
+  const stages = [['grade','1. Grade pasted lyrics'],['suno','2. Suno sound prompt']];
   stages.forEach(([id,label]) => stageRow(id,label));
   const sys = baseSystem();
-  const targetScore = parseFloat($('target').value) || 95;
-  const maxIter = parseInt($('maxiter').value) || 3;
 
   try{
     let draft = {title:'Refined song', sections:[{label:'Full lyrics', lines: pasted.split('\n')}]};
@@ -579,29 +535,12 @@ async function runRefinePipeline(pasted){
     let grade = await gradeDraft(sys, draft);
     setStage('grade','done');
 
-    let iter = 0;
-    if(grade.total < targetScore) setStage('revise','active');
-    while(grade.total < targetScore && iter < maxIter){
-      iter++;
-      const weakest = Object.entries(grade.categories).sort((a,b)=>{
-        const pctA=a[1].score/a[1].max, pctB=b[1].score/b[1].max; return pctA-pctB;
-      }).slice(0,3).map(([k,v])=>k+': '+v.notes).join('\n');
-      const revised = parseJSON(await callLLM(sys,
-        'Current lyrics:\n'+pasted+'\n\nGrade notes — weakest categories to fix:\n'+weakest+
-        '\n\nRewrite the full song addressing these specific weaknesses, keeping what already works. Respond as JSON: {"title": "...", "sections": [{"label": "...", "lines": [...]}, ...]}'
-      ));
-      draft = revised;
-      renderDraftPreview(draft);
-      grade = await gradeDraft(sys, draft);
-    }
-    setStage('revise','done');
-
     setStage('suno','active');
     const spine = {subject:'refined from pasted lyrics'};
     const sunoPrompt = await buildSunoPrompt(sys, spine, {}, {});
     setStage('suno','done');
 
-    renderFinal(draft, grade, sunoPrompt, targetScore, iter);
+    renderFinal(draft, grade, sunoPrompt);
   }catch(err){
     stages.forEach(([id]) => { if(!$('stage-'+id).classList.contains('done')) setStage(id,'err'); });
     $('output').innerHTML = '<div class="empty" style="color:var(--bad); border-color:var(--bad);">Pipeline stopped: '+escapeHtml(err.message)+'</div>';
